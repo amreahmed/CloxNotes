@@ -11,6 +11,7 @@ import EmptyCard from "../../components/EmptyCard/EmptyCard";
 import addNote from "../../assets/downloadd.svg";
 import noSearch from "../../assets/download.svg";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import "../../modalStyles.css"
 
 const Home = () => {
   const [openAddEditModal, setOpenAddEditModal] = useState({
@@ -183,7 +184,7 @@ const Home = () => {
           <Navbar userInfo={userInfo} onSearchNote={onSearchNote} handelClearSearch={handelClearSearch} />
           <div className="px-8 mx-auto">
             {allNotes.length > 0 ? (
-              <div className="grid grid-cols-4 gap-4 mt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
                 {allNotes.map((item) => (
                   <NoteCard
                     key={item._id}
@@ -230,7 +231,7 @@ const Home = () => {
                 backgroundColor: "rgba(0, 0, 0, 0.2)",
               },
             }}
-            className="w-[40%] max-h-3/4 bg-base-100 rounded-md mx-auto mt-14 p-5">
+            className="custom-modal w-[40%] max-h-3/4 bg-base-100 rounded-md mx-auto mt-14 p-5">
             <AddEditNotes
               onClose={handleClose}
               type={openAddEditModal.type}

@@ -1,0 +1,12 @@
+/* modalStyles.css */
+
+
+@media (max-width: 768px) {
+  .custom-modal {
+    width: 90%;
+    max-width: none;
+    height: auto;
+    max-height: 90%;
+    margin: 20px auto;
+  }
+}
