@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "../../components/Navbar/Navbar";
 import NoteCard from "../../components/cards/NoteCard";
 import { MdAdd } from "react-icons/md";
@@ -28,12 +28,12 @@ const Home = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [allNotes, setAllNotes] = useState([]);
   const [isSearch, setIsSearch] = useState(false);
-  const [loading, setLoading] = useState(true); // Introduce loading state
-  const [loadingUser, setLoadingUser] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [loadingNotes, setLoadingNotes] = useState(true);
   const navigate = useNavigate();
 
-  const getUserInfo = async () => {
+  const getUserInfo = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/auth/user");
       if (response.data && response.data.user) {
@@ -45,9 +45,9 @@ const Home = () => {
         navigate("/login");
       }
     } finally {
-      setLoadingUser(false); // Set loading state to false when user info request is complete
+      setLoadingUser(false);
     }
-  };
+  }, [navigate]);
 
   const handleClose = () => {
     setOpenAddEditModal({ isShown: false, type: "add", data: null });
@@ -57,21 +57,25 @@ const Home = () => {
     setOpenAddEditModal({ isShown: true, data: noteDetails, type: "edit" });
   };
 
-  const getAllNotes = async () => {
+  const getAllNotes = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/notes/get");
       if (response.data && response.data.notes) {
-        const sortedNotes = response.data.notes.sort((a, b) => b.isPinned - a.isPinned);
+        const sortedNotes = response.data.notes.sort((a, b) => {
+          if (b.isPinned - a.isPinned !== 0) {
+            return b.isPinned - a.isPinned;
+          } else {
+            return new Date(a.createdOn) - new Date(b.createdOn);
+          }
+        });
         setAllNotes(sortedNotes);
       }
     } catch (error) {
       console.log("error", error);
     } finally {
-      setLoadingNotes(false); // Set loading state to false when notes request is complete
+      setLoadingNotes(false);
     }
-  };
-
-  
+  }, []);
 
   const handleCloseToast = () => {
     setShowToastMsg({ isShown: false, message: "" });
@@ -82,14 +86,18 @@ const Home = () => {
   };
 
   const handelDelete = async (noteID) => {
+    // Optimistic UI update
+    setAllNotes((prevNotes) => prevNotes.filter((note) => note._id !== noteID));
+
     try {
       const response = await axiosInstance.delete("/notes/delete/" + noteID);
       if (response.data && response.data.message) {
         showToastMessage(response.data.message, "delete");
-        getAllNotes();
       }
     } catch (error) {
       console.log("error", error);
+      // Revert UI update if API call fails
+      getAllNotes();
     }
   };
 
@@ -118,16 +126,34 @@ const Home = () => {
 
   const updateIsPinned = async (noteID) => {
     const noteId = noteID._id;
+
+    // Optimistic UI update - Pre-emptively update UI
+    setAllNotes((prevNotes) => {
+      const updatedNotes = prevNotes.map((note) =>
+        note._id === noteId ? { ...note, isPinned: !note.isPinned } : note
+      );
+      return updatedNotes.sort((a, b) => {
+        if (b.isPinned - a.isPinned !== 0) {
+          return b.isPinned - a.isPinned;
+        } else {
+          return new Date(a.createdOn) - new Date(b.createdOn);
+        }
+      });
+    });
+
     try {
       const response = await axiosInstance.put("/notes/pin/" + noteId, {
         isPinned: noteID.isPinned === false ? "true" : "false",
       });
       if (response.data && response.data.message) {
         showToastMessage("Note pinned successfully");
-        getAllNotes();
       }
+      // Fetch updated notes after successful pin/unpin
+      getAllNotes();
     } catch (error) {
       console.log("error", error);
+      // Revert UI update if API call fails
+      getAllNotes();
     }
   };
 
@@ -138,20 +164,17 @@ const Home = () => {
     };
 
     fetchData();
-  }, []);
+  }, [getUserInfo, getAllNotes]);
 
-
-
-    useEffect(() => {
-      if (!loadingUser && !loadingNotes) {
-        // Both user info and notes are fetched
-        setLoading(false); // Set loading state to false
-      }
-    }, [loadingUser, loadingNotes]);
+  useEffect(() => {
+    if (!loadingUser && !loadingNotes) {
+      setLoading(false);
+    }
+  }, [loadingUser, loadingNotes]);
 
   return (
     <>
-      {loading ? ( // Show loading indicator if loading state is true
+      {loading ? (
         <div className="flex justify-center items-center h-screen">
           <AiOutlineLoading3Quarters className="text-6xl text-primary animate-spin" />
         </div>
